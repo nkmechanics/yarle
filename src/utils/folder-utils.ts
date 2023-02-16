@@ -13,7 +13,8 @@ import { OutputFormat } from './../output-format';
 export const paths: Path = {};
 
 export const getResourceDir = (dstPath: string, note: any): string => {
-  return getNoteName(dstPath, note).replace(/\s/g, '_');
+  // return getNoteName(dstPath, note).replace(/\s/g, '_');
+  return getNoteName(dstPath, note);
 };
 
 const getFilePath = (dstPath: string, note: any): string => {
@@ -49,7 +50,7 @@ export const getRelativeResourceDir = (note: any): string => {
 
   return yarleOptions.haveEnexLevelResources
     ? `.${enexFolder}`
-    : `.${enexFolder}${path.sep}${getResourceDir(paths.mdPath, note)}.resources`;
+    : `.${enexFolder}${path.sep}${getResourceDir(paths.mdPath, note)}`;
 };
 
 export const getAbsoluteResourceDir = (note: any): string => {
@@ -59,7 +60,7 @@ export const getAbsoluteResourceDir = (note: any): string => {
 
   return yarleOptions.haveEnexLevelResources
     ? paths.resourcePath
-    : `${paths.resourcePath}${path.sep}${getResourceDir(paths.mdPath, note)}.resources`;
+    : `${paths.resourcePath}${path.sep}${getResourceDir(paths.mdPath, note)}`;
 };
 
 const resourceDirClears = new Map<string, number>();
