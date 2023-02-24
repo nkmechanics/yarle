@@ -39,7 +39,7 @@ export const taskListRule = {
                 ? '- [x] '
                 : (isTodoBlock(node)
                     ? '- [ ] '
-                    :'* '))
+                    :'- '))// changed from * to -
                     ;
         const parent = node.parentNode;
         if (parent.nodeName === 'OL') {

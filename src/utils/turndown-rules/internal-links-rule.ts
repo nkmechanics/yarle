@@ -11,6 +11,15 @@ import { filterByNodeName } from './filter-by-nodename';
 import { getAttributeProxy } from './get-attribute-proxy';
 import { isTOC } from './../../utils/is-toc';
 
+import { loggerInfo } from '../../utils/loggerInfo';
+
+const EVERNOTE_HIGHLIGHT = '-evernote-highlight:true;';
+const EVERNOTE_COLORHIGHLIGHT = '--en-highlight';
+const BOLD = 'bold';
+const ITALIC = 'italic';
+const UNDERLINE = 'underline';
+const STRIKETHROUGH = 'line-through'
+
 export const removeBrackets = (str: string): string => {
     return str.replace(/\[|\]/g, '');
 };
@@ -21,14 +30,52 @@ export const wikiStyleLinksRule = {
     filter: filterByNodeName('A'),
     replacement: (content: any, node: any) => {
         const nodeProxy = getAttributeProxy(node);
+        const HIGHLIGHT_SEPARATOR = yarleOptions.outputFormat === OutputFormat.ObsidianMD ? '==' : '`' ;
 
         if (!nodeProxy.href) {
             return '';
         }
 
+        let suffix = ''
+        let prefix = ''
+        if (nodeProxy.style) {  
+            const nodeValue: string = nodeProxy.style.value;
+            // loggerInfo(`--- link nodeValue: ${nodeValue}`);
+
+            // this aims to care for bold text generated as <span style="font-weight: bold;">Bold</span>
+            if (content !== '<YARLE_NEWLINE_PLACEHOLDER>') {
+                const hasBold =  nodeValue.includes(BOLD);
+                const hasItalic =  nodeValue.includes(ITALIC);
+                const hasUnderline =  nodeValue.includes(UNDERLINE);
+                const hasStrikeThrough = nodeValue.includes(STRIKETHROUGH);
+                
+                if (hasBold) {
+                    suffix += '**'
+                    prefix = '**' + prefix
+                }
+                if (hasItalic) {
+                    suffix += '_'
+                    prefix = '_' + prefix
+                }
+                if (hasStrikeThrough) {
+                    suffix += '~~' 
+                    prefix = '~~' + prefix
+                }
+
+                // if (hasUnderline) {return_string = `<u>${return_string}</u>`}
+                
+                if (nodeValue.includes(EVERNOTE_HIGHLIGHT) || nodeValue.includes(EVERNOTE_COLORHIGHLIGHT)) {
+                    suffix += `${HIGHLIGHT_SEPARATOR}`
+                    prefix = `${HIGHLIGHT_SEPARATOR}` + prefix
+                }
+            }
+        }
+
         let internalTurndownedContent =
             getTurndownService(yarleOptions).turndown(removeBrackets(node.innerHTML));
+        // loggerInfo(`--- internalTurndownedContent: ${internalTurndownedContent}`);
         internalTurndownedContent = removeDoubleBackSlashes(internalTurndownedContent);
+        // loggerInfo(`--- internalTurndownedContent2: ${internalTurndownedContent}`);
         const lexer = new marked.Lexer({});
         const tokens = lexer.lex(internalTurndownedContent) as any;
         const extension = yarleOptions.addExtensionToInternalLinks ? '.md' : '';
@@ -45,12 +92,13 @@ export const wikiStyleLinksRule = {
         const realValue = yarleOptions.urlEncodeFileNamesAndLinks ? encodeURI(value) : value;
 
         if (type === 'file') {
+            // console.log(`------------------file: ![[${realValue}]]`)
             return yarleOptions.outputFormat === OutputFormat.ObsidianMD
-                ? `![[${realValue}]]`
-                : getShortLinkIfPossible(token, value);
+                ? `${prefix}![[${realValue}]]${suffix}`
+                : getShortLinkIfPossible(token, value, prefix, suffix);
         }
         if (value.match(/^(https?:|www\.|file:|ftp:|mailto:)/)) {
-            return getShortLinkIfPossible(token, value);
+            return getShortLinkIfPossible(token, value, prefix,suffix);
         }
 
         const displayName = token['text'];
@@ -72,22 +120,24 @@ export const wikiStyleLinksRule = {
 
             const linkedNoteId = value;
             if (yarleOptions.outputFormat === OutputFormat.ObsidianMD) {
-                return `${mdKeyword}[[${linkedNoteId}${extension}${renderedObsidianDisplayName}]]`;
+                // console.log(`-----------------internalLink?: ${mdKeyword}[[${linkedNoteId}${extension}${renderedObsidianDisplayName}]]`)
+                return `${prefix}${mdKeyword}[[${linkedNoteId}${extension}${renderedObsidianDisplayName}]]${suffix}`;
             }
-
-            return `${mdKeyword}[${displayName}](${linkedNoteId}${extension})`;
+            
+            return `${prefix}${mdKeyword}[${displayName}](${linkedNoteId}${extension})${suffix}`;
         }
-
+        // console.log(`------------------outlink?: ${mdKeyword}[[${realValue}${renderedObsidianDisplayName}]]`)
         return (yarleOptions.outputFormat === OutputFormat.ObsidianMD)
-        ? `${mdKeyword}[[${realValue}${renderedObsidianDisplayName}]]`
+        ? `${prefix}${mdKeyword}[[${realValue}${renderedObsidianDisplayName}]]${suffix}`
         : (yarleOptions.outputFormat === OutputFormat.StandardMD || yarleOptions.outputFormat === OutputFormat.LogSeqMD)
-            ? `${mdKeyword}[${displayName}](${realValue})`
-            : `${mdKeyword}[[${realValue}]]`;
+            ? `${prefix}${mdKeyword}[${displayName}](${realValue})${suffix}`
+            : `${prefix}${mdKeyword}[[${realValue}]]${suffix}`;
     },
 };
 
-export const getShortLinkIfPossible = (token: any, value: string): string => {
+export const getShortLinkIfPossible = (token: any, value: string, prefix: string, suffix: string): string => {
+    // console.log(`------------------return shortlink: ${token['mdKeyword']}[${token['text']}](${value})`)
     return (!token['text'] || _.unescape(token['text']) === _.unescape(value))
-                ? yarleOptions.generateNakedUrls ? value : `<${value}>`
-                : `${token['mdKeyword']}[${token['text']}](${value})`;
+                ? yarleOptions.generateNakedUrls ? value : `${prefix}<${value}>${suffix}`
+                : `${prefix}${token['mdKeyword']}[${token['text']}](${value})${suffix}`;
 };

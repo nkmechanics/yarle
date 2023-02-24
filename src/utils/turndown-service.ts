@@ -4,8 +4,10 @@ import { gfm } from 'joplin-turndown-plugin-gfm';
 import { YarleOptions } from './../YarleOptions';
 import {
     divRule,
+    bRule,
     imagesRule,
     newLineRule,
+    newLineRule2,
     spanRule,
     strikethroughRule,
     taskItemsRule,
@@ -28,13 +30,17 @@ export const getTurndownService = (yarleOptions: YarleOptions) => {
             return node.isBlock ? `\n${content}\n` : content;
             },
         });
+
+    // turndownService.addRule('newline2', newLineRule2);
     turndownService.use(gfm);
     turndownService.addRule('span', spanRule);
+    turndownService.addRule('b', bRule);
     turndownService.addRule('strikethrough', strikethroughRule);
     turndownService.addRule('evernote task items', taskItemsRule);
     turndownService.addRule('wikistyle links', wikiStyleLinksRule);
     turndownService.addRule('images', imagesRule);
     turndownService.addRule('list', taskListRule);
+    turndownService.keep(['font', 'u']) // keep <font> and underline <u>
 
     if (yarleOptions.outputFormat === OutputFormat.LogSeqMD) {
         turndownService.addRule('logseq_hr', {

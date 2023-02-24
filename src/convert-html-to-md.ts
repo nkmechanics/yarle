@@ -4,6 +4,7 @@ import { getTurndownService } from './utils/turndown-service';
 import { NoteData } from './models/NoteData';
 import { YarleOptions } from './YarleOptions';
 import { OutputFormat } from './output-format';
+import { loggerInfo } from './utils/loggerInfo';
 
 const unwrapElement = (node: Element) => {
     node.replaceWith(...Array.from(node.children));
@@ -90,13 +91,16 @@ export const convertHtml2Md = (yarleOptions: YarleOptions, { htmlContent }: Note
 
     const contentNode = new JSDOM(fixSublistsInContent(content)).window.document
       .getElementsByTagName('en-note').item(0) as any as HTMLElement;
-
+    // loggerInfo(`--- contentNode: ${contentNode}`);
     let contentInMd = getTurndownService(yarleOptions)
         .turndown(fixTasks(fixSublists(contentNode)));
-
+    // loggerInfo(`--- contentInMd: ${contentInMd}`);
     const newLinePlaceholder = new RegExp('<YARLE_NEWLINE_PLACEHOLDER>', 'g');
-    contentInMd = contentInMd.replace(newLinePlaceholder, '');
-
+    contentInMd = contentInMd.replace(newLinePlaceholder, ''); // set newline to "new line" instead of nothing
+    // contentInMd = contentInMd.replace(newLinePlaceholder, '\n'); // set newline to "new line" instead of nothing
+    // contentInMd = contentInMd.replace(newLinePlaceholder, '<br>'); // set newline to "new line" instead of nothing
+    contentInMd = contentInMd.replaceAll(/\$(?! )/g, '$ ') // make sure there is blank space after $ sign
+    
     if (yarleOptions.outputFormat === OutputFormat.LogSeqMD) {
 
       contentInMd = contentInMd.replace(/\n/g, '\n- ') // add a "- " at each new line
